@@ -3,18 +3,13 @@ package services
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"log"
 	"math"
 	"strconv"
 	"strings"
-	"time"
 
 	"expressXgolang/golang/config"
 	"expressXgolang/golang/db"
-
-	"github.com/redis/go-redis/v9"
 )
 
 type RawQueryResult struct {
@@ -33,8 +28,6 @@ type AnalysisResult struct {
 	Total          *int64                 `json:"total,omitempty"`
 	Attributes     map[string]interface{} `json:"attributes"`
 }
-
-const analysisCacheTTL = 10 * time.Minute
 
 const optimizedQuery = `
 WITH coordinates AS NOT MATERIALIZED (
@@ -469,65 +462,7 @@ func formatResult(row RawQueryResult) AnalysisResult {
 	}
 }
 
-func analysisCacheKey(latitude, longitude float64) string {
-	lat := strconv.FormatFloat(latitude, 'g', -1, 64)
-	lng := strconv.FormatFloat(longitude, 'g', -1, 64)
-	return fmt.Sprintf("analyze:v1:lat:%s:lng:%s", lat, lng)
-}
-
-func loadAnalysisCache(ctx context.Context, key string) ([]AnalysisResult, bool) {
-	if db.RedisClient == nil {
-		return nil, false
-	}
-
-	payload, err := db.RedisClient.Get(ctx, key).Bytes()
-	if errors.Is(err, redis.Nil) {
-		log.Printf("analysis cache miss: %s", key)
-		return nil, false
-	}
-	if err != nil {
-		log.Printf("analysis cache read failed for %s: %v", key, err)
-		return nil, false
-	}
-
-	var results []AnalysisResult
-	if err := json.Unmarshal(payload, &results); err != nil {
-		log.Printf("analysis cache contains invalid JSON for %s: %v", key, err)
-		if err := db.RedisClient.Del(ctx, key).Err(); err != nil {
-			log.Printf("failed to delete invalid analysis cache %s: %v", key, err)
-		}
-		return nil, false
-	}
-
-	log.Printf("analysis cache hit: %s", key)
-	return results, true
-}
-
-func storeAnalysisCache(ctx context.Context, key string, results []AnalysisResult) {
-	if db.RedisClient == nil {
-		return
-	}
-
-	payload, err := json.Marshal(results)
-	if err != nil {
-		log.Printf("failed to encode analysis cache %s: %v", key, err)
-		return
-	}
-
-	if err := db.RedisClient.Set(ctx, key, payload, analysisCacheTTL).Err(); err != nil {
-		log.Printf("failed to store analysis cache %s: %v", key, err)
-		return
-	}
-
-	log.Printf("analysis cache stored: %s (ttl=%s)", key, analysisCacheTTL)
-}
-
 func AnalyzeLocation(ctx context.Context, latitude, longitude float64) ([]AnalysisResult, error) {
-	cacheKey := analysisCacheKey(latitude, longitude)
-	if cachedResults, found := loadAnalysisCache(ctx, cacheKey); found {
-		return cachedResults, nil
-	}
-
 	// $1 = latitude, $2 = longitude, $3 = radius_degrees
 	rows, err := db.Pool.Query(ctx, optimizedQuery, latitude, longitude, config.RadiusDegrees)
 	if err != nil {
@@ -563,6 +498,5 @@ func AnalyzeLocation(ctx context.Context, latitude, longitude float64) ([]Analys
 		return nil, fmt.Errorf("error during row iteration: %w", err)
 	}
 
-	storeAnalysisCache(ctx, cacheKey, results)
 	return results, nil
 }

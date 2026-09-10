@@ -19,21 +19,11 @@ func main() {
 		log.Printf("warning: .env file was not loaded: %v", err)
 	}
 
-	ctx := context.Background()
-
 	pool, err := db.InitDB()
 	if err != nil {
 		log.Fatalf("database initialization failed: %v", err)
 	}
 	defer pool.Close()
-
-	redisClient, err := db.InitRedis(ctx)
-	if err != nil {
-		log.Printf("warning: Redis unavailable; cache disabled: %v", err)
-	} else {
-		defer redisClient.Close()
-		log.Println("Redis connection established successfully")
-	}
 
 	router := gin.Default()
 	router.GET("/api/analyze", controllers.GetAnalyzeLocation)
