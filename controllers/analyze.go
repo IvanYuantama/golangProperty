@@ -3,10 +3,10 @@ package controllers
 import (
 	"context"
 	"errors"
+	"log"
 	"math"
 	"net/http"
 	"strconv"
-	"time"
 
 	"expressXgolang/golang/services"
 
@@ -24,7 +24,19 @@ type analyzeResponse struct {
 	Data        []services.AnalysisResult `json:"data"`
 }
 
-func GetAnalyzeLocation(c *gin.Context) {
+type LocationAnalyzer interface {
+	AnalyzeLocation(ctx context.Context, latitude, longitude float64) ([]services.AnalysisResult, error)
+}
+
+type AnalyzeController struct {
+	analyzer LocationAnalyzer
+}
+
+func NewAnalyzeController(analyzer LocationAnalyzer) *AnalyzeController {
+	return &AnalyzeController{analyzer: analyzer}
+}
+
+func (h *AnalyzeController) GetLocation(c *gin.Context) {
 	latParam := c.Query("lat")
 	lngParam := c.Query("lng")
 
@@ -65,11 +77,10 @@ func GetAnalyzeLocation(c *gin.Context) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
-	defer cancel()
-
-	data, err := services.AnalyzeLocation(ctx, latitude, longitude)
+	data, err := h.analyzer.AnalyzeLocation(c.Request.Context(), latitude, longitude)
 	if err != nil {
+		log.Printf("analisis lokasi gagal: %v", err)
+
 		if errors.Is(err, context.DeadlineExceeded) {
 			c.JSON(http.StatusGatewayTimeout, gin.H{
 				"error": "analisis lokasi melewati batas waktu",
@@ -92,22 +103,3 @@ func GetAnalyzeLocation(c *gin.Context) {
 		Data: data,
 	})
 }
-
-// Draft controller awal Anda disimpan di bawah ini sebagai referensi.
-// import (
-// 	"expressXgolang/golang/services"
-// 	"github.com/gin-gonic/gin"
-//     "net/http"
-// 	"fmt"
-// )
-
-// func getAnalyzeLocation(c *gin.Context) {
-// 	lat := c.Param("lat")
-// 	lang := c.Param("lang")
-
-// 	if (!lat || !lng){
-// 		fmt.Println("Parameter belum diisi")
-// 		c.Error("Parameter belum diisi")
-// 	}
-
-// }

@@ -4,18 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var Pool *pgxpool.Pool
-
-func InitDB() (*pgxpool.Pool, error) {
-	connStr := os.Getenv("DATABASE_URL")
+func OpenPostgres(ctx context.Context, connStr string) (*pgxpool.Pool, error) {
 	if connStr == "" {
-		return nil, fmt.Errorf("DATABASE_URL environment variable is not set")
+		return nil, fmt.Errorf("DATABASE_URL wajib diisi")
 	}
 
 	if !strings.Contains(connStr, "sslmode=") {
@@ -28,21 +24,19 @@ func InitDB() (*pgxpool.Pool, error) {
 
 	config, err := pgxpool.ParseConfig(connStr)
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse connection string: %w", err)
+		return nil, fmt.Errorf("format koneksi PostgreSQL tidak valid: %w", err)
 	}
 
-	ctx := context.Background()
 	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create connection pool: %w", err)
+		return nil, fmt.Errorf("gagal membuat pool koneksi PostgreSQL: %w", err)
 	}
 
 	if err := pool.Ping(ctx); err != nil {
 		pool.Close()
-		return nil, fmt.Errorf("unable to ping database: %w", err)
+		return nil, fmt.Errorf("gagal menghubungi PostgreSQL: %w", err)
 	}
 
-	Pool = pool
-	log.Println("Database connection pool established successfully")
-	return Pool, nil
+	log.Println("koneksi PostgreSQL berhasil dibuat")
+	return pool, nil
 }

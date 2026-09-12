@@ -1,0 +1,154 @@
+{
+  "info": {
+    "_postman_id": "4e09ab4a-3f0e-4d54-a75e-53db9f940fcb",
+    "name": "Location Analysis API",
+    "description": "Collection untuk dokumentasi dan pengujian manual backend analisis lokasi.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Status Server",
+      "item": [
+        {
+          "name": "Liveness",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/health",
+            "description": "Memastikan proses HTTP masih aktif. Endpoint ini tidak memerlukan API key dan tidak memeriksa database."
+          },
+          "response": [
+            {
+              "name": "200 - Server aktif",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "cookie": [],
+              "body": "{\n  \"status\": \"ok\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Readiness",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/ready",
+            "description": "Memeriksa PostgreSQL dan Redis. API belum siap jika PostgreSQL gagal; Redis hanya cache opsional."
+          },
+          "response": [
+            {
+              "name": "200 - Dependency siap",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "cookie": [],
+              "body": "{\n  \"status\": \"siap\",\n  \"database\": \"terhubung\",\n  \"redis\": \"terhubung\"\n}"
+            },
+            {
+              "name": "503 - Database tidak tersedia",
+              "status": "Service Unavailable",
+              "code": 503,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "cookie": [],
+              "body": "{\n  \"status\": \"belum siap\",\n  \"database\": \"tidak tersedia\",\n  \"redis\": \"belum diperiksa\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Analisis Lokasi",
+      "item": [
+        {
+          "name": "Analisis berdasarkan koordinat",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{api_key}}",
+                "type": "text",
+                "description": "API key backend."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/analyze?lat={{latitude}}&lng={{longitude}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "analyze"],
+              "query": [
+                { "key": "lat", "value": "{{latitude}}", "description": "Latitude antara -90 dan 90." },
+                { "key": "lng", "value": "{{longitude}}", "description": "Longitude antara -180 dan 180." }
+              ]
+            },
+            "description": "Mengambil hasil seluruh layer menggunakan intersect, radius, atau grouped sesuai konfigurasi backend."
+          },
+          "response": [
+            {
+              "name": "200 - Analisis berhasil",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"coordinates\": {\n    \"lat\": -8.65,\n    \"lng\": 115.2167\n  },\n  \"data\": [\n    {\n      \"layer\": \"temperature\",\n      \"distance_meters\": 0,\n      \"label\": \"Hot\",\n      \"color\": \"#FF9500\",\n      \"attributes\": {\n        \"suhu\": \"Hot\"\n      }\n    }\n  ]\n}"
+            },
+            {
+              "name": "400 - Parameter tidak valid",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "cookie": [],
+              "body": "{\n  \"error\": \"lat dan lng wajib diisi\"\n}"
+            },
+            {
+              "name": "401 - API key tidak valid",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "cookie": [],
+              "body": "{\n  \"error\": \"API key tidak valid atau tidak dikirim\"\n}"
+            },
+            {
+              "name": "429 - Rate limit",
+              "status": "Too Many Requests",
+              "code": 429,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" },
+                { "key": "Retry-After", "value": "30" }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"batas permintaan terlampaui; silakan coba lagi nanti\"\n}"
+            },
+            {
+              "name": "500 - Kesalahan internal",
+              "status": "Internal Server Error",
+              "code": 500,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "cookie": [],
+              "body": "{\n  \"error\": \"gagal menganalisis lokasi\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "404 - Endpoint tidak ditemukan",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/endpoint-tidak-ada",
+        "description": "Contoh respons ketika URL endpoint tidak terdaftar."
+      },
+      "response": [
+        {
+          "name": "404 - Endpoint tidak ditemukan",
+          "status": "Not Found",
+          "code": 404,
+          "header": [{ "key": "Content-Type", "value": "application/json" }],
+          "cookie": [],
+          "body": "{\n  \"error\": \"endpoint tidak ditemukan\"\n}"
+        }
+      ]
+    }
+  ]
+}
