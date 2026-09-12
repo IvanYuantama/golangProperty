@@ -26,7 +26,6 @@ func RequestLogger() gin.HandlerFunc {
 		start := time.Now()
 		c.Next()
 
-		
 		if c.Request.URL.Path == "/health" && c.Writer.Status() < http.StatusBadRequest {
 			return
 		}
