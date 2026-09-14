@@ -35,7 +35,7 @@ Compose menjalankan dua container:
 
 Image API dibangun dan dikirim ke Docker Hub dari Mac. VPS menyimpan `compose.yaml` dan `.env`, lalu menarik image tersebut dari Docker Hub. Nilai dalam `.env` diinjeksi ketika container dibuat dan tidak disalin ke image Docker.
 
-Port aplikasi di-bind ke `127.0.0.1`, sehingga tidak dapat diakses langsung dari internet. Konfigurasi Nginx dikelola secara manual di VPS dan harus meneruskan request dari `https://property.ivanyuantama.my.id` ke aplikasi pada `http://127.0.0.1:3100`.
+Port aplikasi di-bind ke `127.0.0.1`, sehingga hanya dapat diakses langsung dari VPS dan tidak dipublikasikan ke internet.
 
 Di VPS, buat file environment di direktori yang sama dengan `compose.yaml`:
 
@@ -53,8 +53,8 @@ DATABASE_URL=postgresql://username:password@hostname:5432/database_name?sslmode=
 REDIS_URL=redis://redis:6379/0
 API_KEY=ganti-dengan-random-string-minimal-32-karakter
 GIN_MODE=release
-ENABLE_HSTS=true
-TRUSTED_PROXIES=172.16.0.0/12,127.0.0.1
+ENABLE_HSTS=false
+TRUSTED_PROXIES=
 RATE_LIMIT_PER_MINUTE=60
 REQUEST_TIMEOUT=5s
 ANALYZE_CACHE_TTL=10m
@@ -62,7 +62,7 @@ ANALYZE_CACHE_VERSION=v1
 TZ=Asia/Makassar
 ```
 
-Compose meneruskan seluruh variabel dari `.env` ke container API melalui `env_file`. Untuk Redis, hostname `redis` mengacu pada service Redis di jaringan internal Docker. `TRUSTED_PROXIES` memperbolehkan aplikasi membaca alamat IP client dari header yang ditulis ulang oleh Nginx; nilai tersebut aman digunakan selama port API tetap di-bind ke `127.0.0.1` seperti pada `compose.yaml`.
+Compose meneruskan seluruh variabel dari `.env` ke container API melalui `env_file`. Untuk Redis, hostname `redis` mengacu pada service Redis di jaringan internal Docker.
 
 Validasi konfigurasi lalu jalankan:
 
@@ -81,17 +81,10 @@ curl http://localhost:3100/ready
 docker compose logs -f api redis
 ```
 
-Periksa melalui Nginx dan HTTPS:
-
-```bash
-curl --fail https://property.ivanyuantama.my.id/health
-curl --fail https://property.ivanyuantama.my.id/ready
-```
-
 Memanggil endpoint analyze:
 
 ```bash
-curl "https://property.ivanyuantama.my.id/api/analyze?lat=-8.65&lng=115.2167" \
+curl "http://127.0.0.1:3100/api/analyze?lat=-8.65&lng=115.2167" \
   -H "X-API-Key: API_KEY_ANDA"
 ```
 
@@ -223,8 +216,8 @@ Deployment dilakukan secara manual dengan alur berikut:
 
 1. Image Docker dibangun di Mac dari source code terbaru.
 2. Image dikirim ke Docker Hub sebagai `ivanyp59/golang-api:latest`.
-3. VPS menarik image terbaru dan membuat ulang container API.
-4. Nginx meneruskan trafik HTTPS dari `property.ivanyuantama.my.id` ke container API.
+3. Commit terbaru diambil dari GitHub ke VPS.
+4. VPS menarik image terbaru dan membuat ulang container API.
 
 Source code tidak perlu di-build di VPS.
 
@@ -259,30 +252,40 @@ Untuk VPS ARM, ganti `linux/amd64` menjadi `linux/arm64`. Jalankan perintah ters
 
 ### Deployment pertama di VPS
 
-1. Pastikan Docker dan Docker Compose sudah terpasang di VPS.
-2. Siapkan DNS, HTTPS, dan Nginx secara manual di VPS. Arahkan upstream Nginx untuk domain `property.ivanyuantama.my.id` ke `http://127.0.0.1:3100`.
-3. Buat direktori deployment di VPS:
-
-```bash
-ssh USER@ALAMAT_VPS "mkdir -p ~/location-analysis"
-```
-
-4. Dari direktori `golang` di Mac, kirim `compose.yaml` ke VPS:
-
-```bash
-scp compose.yaml USER@ALAMAT_VPS:~/location-analysis/compose.yaml
-```
-
-5. Di VPS, buat environment production:
+1. Pastikan Git, GitHub CLI, Docker, dan Docker Compose sudah terpasang di VPS.
+2. Masuk ke VPS:
 
 ```bash
 ssh USER@ALAMAT_VPS
-cd ~/location-analysis
+```
+
+3. Login ke GitHub melalui GitHub CLI:
+
+```bash
+gh auth login
+```
+
+Pilih GitHub.com dan protokol HTTPS, lalu selesaikan proses login. Periksa hasilnya:
+
+```bash
+gh auth status
+```
+
+4. Clone repository dan masuk ke direktori project:
+
+```bash
+gh repo clone IvanYuantama/golangProperty ~/golangProperty
+cd ~/golangProperty
+```
+
+5. Buat environment production:
+
+```bash
 nano .env
 chmod 600 .env
 ```
 
-Isi `DATABASE_URL`, `API_KEY`, port, dan konfigurasi production lainnya. Gunakan `APP_PORT=3100` agar sesuai dengan upstream Nginx, `ENABLE_HSTS=true` untuk trafik HTTPS, serta `TRUSTED_PROXIES=172.16.0.0/12,127.0.0.1` agar rate limiter menerima IP client dari Nginx. Jangan menyalin `.env` ke dalam image Docker.
+Isi `DATABASE_URL`, `API_KEY`, port, dan konfigurasi production lainnya. Gunakan `APP_PORT=3100`, `ENABLE_HSTS=false`, dan biarkan `TRUSTED_PROXIES` kosong selama aplikasi tidak berada di belakang reverse proxy. Jangan menyalin `.env` ke dalam image Docker atau commit file tersebut ke repository.
 
 6. Jika repository Docker Hub bersifat private, login ke Docker Hub dari VPS:
 
@@ -307,17 +310,10 @@ curl --fail http://127.0.0.1:3100/ready
 docker compose logs --tail 100 api redis
 ```
 
-9. Setelah konfigurasi manual Nginx dan HTTPS aktif, periksa domain publik:
-
-```bash
-curl --fail https://property.ivanyuantama.my.id/health
-curl --fail https://property.ivanyuantama.my.id/ready
-```
-
-Endpoint analisis kemudian tersedia di:
+Endpoint analisis tersedia secara lokal di VPS pada:
 
 ```text
-https://property.ivanyuantama.my.id/api/analyze
+http://127.0.0.1:3100/api/analyze
 ```
 
 ### Deployment setelah ada perubahan
@@ -328,23 +324,30 @@ https://property.ivanyuantama.my.id/api/analyze
 
 ```bash
 ssh USER@ALAMAT_VPS
-cd ~/location-analysis
+cd ~/golangProperty
 ```
 
-4. Tarik image terbaru dan buat ulang container API:
+4. Ambil commit terbaru dari GitHub:
 
 ```bash
+git pull --ff-only origin main
+```
+
+5. Validasi konfigurasi, tarik image terbaru, dan buat ulang container API:
+
+```bash
+docker compose config --quiet
 docker compose pull api
 docker compose up -d --no-build
 docker compose ps
 ```
 
-5. Periksa deployment:
+6. Periksa deployment dari VPS:
 
 ```bash
-curl --fail https://property.ivanyuantama.my.id/health
-curl --fail https://property.ivanyuantama.my.id/ready
+curl --fail http://127.0.0.1:3100/health
+curl --fail http://127.0.0.1:3100/ready
 docker compose logs --tail 100 api redis
 ```
 
-File `.env` tetap berada di VPS dan tidak ikut masuk ke image. Deployment ini juga tidak memerlukan `git pull` atau proses build Docker di VPS.
+File `.env` tetap berada di VPS karena diabaikan oleh Git, sehingga `git pull` tidak mengganti credential production. Image Docker tetap dibangun di Mac; VPS hanya menarik commit konfigurasi dan image terbaru.
