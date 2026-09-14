@@ -8,7 +8,7 @@ services:
       - --appendonly
       - "no"
       - --maxmemory
-      - 128mb
+      - 64mb
       - --maxmemory-policy
       - allkeys-lru
     restart: unless-stopped
@@ -24,9 +24,7 @@ services:
       - no-new-privileges:true
 
   api:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ivanyp59/golang-api:latest
     restart: unless-stopped
     depends_on:
       redis:
@@ -36,7 +34,11 @@ services:
     ports:
       - "${APP_PORT}:${PORT}"
     healthcheck:
-      test: ["CMD-SHELL", "wget --quiet --output-document=/dev/null http://127.0.0.1:$${PORT}/health"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget --quiet --output-document=/dev/null http://127.0.0.1:$${PORT}/health",
+        ]
       interval: 15s
       timeout: 3s
       retries: 5

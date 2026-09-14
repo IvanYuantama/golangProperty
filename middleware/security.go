@@ -14,9 +14,7 @@ import (
 
 const APIKeyHeader = "X-API-Key"
 
-// APIKey melindungi route dengan API key yang dikirim melalui header X-API-Key.
-// Digest berukuran tetap dibandingkan secara constant-time agar nilai rahasia
-// tidak dibandingkan menggunakan operasi string biasa.
+
 func APIKey(expected string) gin.HandlerFunc {
 	expectedDigest := sha256.Sum256([]byte(expected))
 
@@ -26,7 +24,7 @@ func APIKey(expected string) gin.HandlerFunc {
 
 		if provided == "" || subtle.ConstantTimeCompare(providedDigest[:], expectedDigest[:]) != 1 {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": "API key tidak valid atau tidak dikirim",
+				"error": "unauthorized",
 			})
 			return
 		}
@@ -35,7 +33,6 @@ func APIKey(expected string) gin.HandlerFunc {
 	}
 }
 
-// SecurityHeaders menambahkan header defensif untuk respons API.
 func SecurityHeaders(enableHSTS bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("X-Content-Type-Options", "nosniff")
@@ -55,8 +52,6 @@ type clientWindow struct {
 	resetAt  time.Time
 }
 
-// IPRateLimiter adalah fixed-window limiter untuk satu instance aplikasi.
-// Untuk beberapa instance backend, limiter sebaiknya dipindahkan ke Redis.
 type IPRateLimiter struct {
 	mu          sync.Mutex
 	clients     map[string]clientWindow
@@ -103,7 +98,7 @@ func (l *IPRateLimiter) Middleware() gin.HandlerFunc {
 
 			c.Header("Retry-After", strconv.Itoa(retryAfter))
 			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
-				"error": "batas permintaan terlampaui; silakan coba lagi nanti",
+				"error": "too many requests",
 			})
 			return
 		}

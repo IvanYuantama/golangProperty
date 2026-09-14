@@ -20,8 +20,7 @@ type LayerDefinition struct {
 }
 
 // analyzeLayers adalah whitelist tabel dan kolom yang boleh masuk ke query.
-// Untuk menambah layer, cukup tambahkan definisi di sini; jangan mengambil nama
-// tabel atau kolom langsung dari parameter pengguna.
+// Untuk menambah layer, cukup tambahkan definisi di sini; jangan mengambil nama tabel atau kolom langsung dari parameter pengguna.
 var analyzeLayers = []LayerDefinition{
 	{
 		Name:         "flood",

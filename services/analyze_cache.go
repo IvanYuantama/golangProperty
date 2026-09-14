@@ -12,7 +12,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// Namespace menggabungkan query dan versi data. Naikkan ANALYZE_CACHE_VERSION setelah data database diperbarui agar cache lama langsung tidak digunakan.
+// namespace gabungin query dan versi data. naikkan ANALYZE_CACHE_VERSION setelah data database diperbarui agar cache lama langsung tidak digunakan.
 func analysisCacheNamespace(query, version string) string {
 	digest := sha256.Sum256([]byte(version + ":" + query))
 	return fmt.Sprintf("analyze:%x", digest[:8])

@@ -10,7 +10,7 @@ import (
 
 const (
 	maxLayerResultLimit = 100
-	// PostgreSQL membatasi attribut (40) pada jumlah jsonb_build_object, makanya dipecah lalu digabungkan.
+	// postgreSQL membatasi attribut (40) pada jumlah jsonb_build_object, makanya dipecah lalu digabungkan.
 	jsonAttributesChunk = 40
 )
 

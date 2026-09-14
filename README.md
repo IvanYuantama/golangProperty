@@ -179,7 +179,7 @@ Kolom internal `style_value` dipakai service untuk menentukan `label` dan `color
 
 - SQL Injection dicegah dengan parameterized query serta whitelist nama tabel dan kolom.
 - Koordinat divalidasi sebagai angka dengan batas latitude dan longitude yang benar.
-- Endpoint bisnis dilindungi menggunakan API key melalui header `X-API-Key`.
+- Endpoint dilindungi menggunakan API key melalui header `X-API-Key`.
 - API key dibandingkan secara constant-time untuk mengurangi risiko timing attack.
 - Credential database, Redis, dan API key dibaca dari environment dan tidak di-hardcode dalam source code.
 - Request API memiliki timeout agar query yang terlalu lama dapat dibatalkan.
@@ -196,11 +196,8 @@ Kolom internal `style_value` dipakai service untuk menentukan `label` dan `color
 
 - Tambahkan login dan authentication agar setiap request dapat dihubungkan dengan user tertentu.
 - Tambahkan rate limiter per user setelah authentication tersedia tanpa menghapus perlindungan per IP.
-- Pindahkan penyimpanan rate limit ke Redis ketika backend dijalankan pada lebih dari satu instance.
-- Tambahkan rotasi dan pencabutan API key agar credential yang bocor dapat segera dinonaktifkan.
 - Tambahkan role-based access control jika setiap user mempunyai hak akses endpoint yang berbeda.
 - Gunakan secret manager atau Docker Secrets untuk melindungi credential production dengan lebih baik.
-- Gunakan HTTPS melalui reverse proxy dan aktifkan HSTS hanya setelah sertifikat berfungsi dengan benar.
 - Tambahkan request ID, audit log, monitoring, dan alert agar aktivitas mencurigakan lebih mudah ditelusuri.
 - Tambahkan aturan CORS berbasis allowlist jika backend nantinya diakses oleh frontend web dari browser.
 - Tambahkan automated test, vulnerability scanning, dan dependency scanning sebelum deployment production.
