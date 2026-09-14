@@ -33,9 +33,9 @@ Compose menjalankan dua container:
 - `api`: backend Go dari image `ivanyp59/golang-api:latest` pada port internal yang ditentukan oleh `PORT`.
 - `redis`: cache internal yang hanya dapat diakses oleh container API.
 
-Image API dibangun dan dikirim ke Docker Hub dari Mac. VPS menyimpan `compose.yaml`, `.env`, dan konfigurasi Nginx, lalu menarik image tersebut dari Docker Hub. Nilai dalam `.env` diinjeksi ketika container dibuat dan tidak disalin ke image Docker.
+Image API dibangun dan dikirim ke Docker Hub dari Mac. VPS menyimpan `compose.yaml` dan `.env`, lalu menarik image tersebut dari Docker Hub. Nilai dalam `.env` diinjeksi ketika container dibuat dan tidak disalin ke image Docker.
 
-Port aplikasi di-bind ke `127.0.0.1`, sehingga tidak dapat diakses langsung dari internet. Nginx di host VPS menjadi satu-satunya pintu masuk publik dan meneruskan request dari `https://property.ivanyuantama.my.id` ke aplikasi pada `http://127.0.0.1:3100`.
+Port aplikasi di-bind ke `127.0.0.1`, sehingga tidak dapat diakses langsung dari internet. Konfigurasi Nginx dikelola secara manual di VPS dan harus meneruskan request dari `https://property.ivanyuantama.my.id` ke aplikasi pada `http://127.0.0.1:3100`.
 
 Di VPS, buat file environment di direktori yang sama dengan `compose.yaml`:
 
@@ -259,36 +259,21 @@ Untuk VPS ARM, ganti `linux/amd64` menjadi `linux/arm64`. Jalankan perintah ters
 
 ### Deployment pertama di VPS
 
-1. Buat DNS record tipe `A` untuk `property.ivanyuantama.my.id` yang mengarah ke alamat IPv4 publik VPS. Jika VPS memakai IPv6, tambahkan juga record `AAAA`. Tunggu hingga DNS sudah dapat di-resolve sebelum menjalankan Certbot.
-2. Pastikan port `80` dan `443` di firewall atau security group VPS terbuka.
-3. Pastikan Docker dan Docker Compose sudah terpasang. Untuk VPS Ubuntu/Debian, pasang Nginx dan Certbot:
-
-```bash
-sudo apt update
-sudo apt install -y nginx certbot python3-certbot-nginx
-```
-
-Jika UFW aktif, izinkan trafik Nginx:
-
-```bash
-sudo ufw allow "Nginx Full"
-```
-
-4. Buat direktori deployment di VPS:
+1. Pastikan Docker dan Docker Compose sudah terpasang di VPS.
+2. Siapkan DNS, HTTPS, dan Nginx secara manual di VPS. Arahkan upstream Nginx untuk domain `property.ivanyuantama.my.id` ke `http://127.0.0.1:3100`.
+3. Buat direktori deployment di VPS:
 
 ```bash
 ssh USER@ALAMAT_VPS "mkdir -p ~/location-analysis"
 ```
 
-5. Dari direktori `golang` di Mac, kirim `compose.yaml` dan konfigurasi Nginx ke VPS:
+4. Dari direktori `golang` di Mac, kirim `compose.yaml` ke VPS:
 
 ```bash
 scp compose.yaml USER@ALAMAT_VPS:~/location-analysis/compose.yaml
-scp deploy/nginx/property.ivanyuantama.my.id.conf \
-  USER@ALAMAT_VPS:~/location-analysis/property.ivanyuantama.my.id.conf
 ```
 
-6. Di VPS, buat environment production:
+5. Di VPS, buat environment production:
 
 ```bash
 ssh USER@ALAMAT_VPS
@@ -299,13 +284,13 @@ chmod 600 .env
 
 Isi `DATABASE_URL`, `API_KEY`, port, dan konfigurasi production lainnya. Gunakan `APP_PORT=3100` agar sesuai dengan upstream Nginx, `ENABLE_HSTS=true` untuk trafik HTTPS, serta `TRUSTED_PROXIES=172.16.0.0/12,127.0.0.1` agar rate limiter menerima IP client dari Nginx. Jangan menyalin `.env` ke dalam image Docker.
 
-7. Jika repository Docker Hub bersifat private, login ke Docker Hub dari VPS:
+6. Jika repository Docker Hub bersifat private, login ke Docker Hub dari VPS:
 
 ```bash
 docker login
 ```
 
-8. Validasi konfigurasi, tarik image, lalu jalankan aplikasi:
+7. Validasi konfigurasi, tarik image, lalu jalankan aplikasi:
 
 ```bash
 docker compose config --quiet
@@ -314,7 +299,7 @@ docker compose up -d --no-build
 docker compose ps
 ```
 
-9. Pastikan aplikasi dapat diakses dari localhost VPS:
+8. Pastikan aplikasi dapat diakses dari localhost VPS:
 
 ```bash
 curl --fail http://127.0.0.1:3100/health
@@ -322,29 +307,7 @@ curl --fail http://127.0.0.1:3100/ready
 docker compose logs --tail 100 api redis
 ```
 
-10. Aktifkan konfigurasi Nginx:
-
-```bash
-sudo cp ~/location-analysis/property.ivanyuantama.my.id.conf \
-  /etc/nginx/sites-available/property.ivanyuantama.my.id
-sudo ln -s \
-  /etc/nginx/sites-available/property.ivanyuantama.my.id \
-  /etc/nginx/sites-enabled/property.ivanyuantama.my.id
-sudo nginx -t
-sudo systemctl reload nginx
-```
-
-11. Terbitkan sertifikat HTTPS dan aktifkan redirect HTTP ke HTTPS:
-
-```bash
-sudo certbot --nginx \
-  --redirect \
-  -d property.ivanyuantama.my.id
-```
-
-Certbot akan memperbarui konfigurasi Nginx di VPS dan memasang perpanjangan sertifikat otomatis.
-
-12. Periksa domain publik:
+9. Setelah konfigurasi manual Nginx dan HTTPS aktif, periksa domain publik:
 
 ```bash
 curl --fail https://property.ivanyuantama.my.id/health
@@ -356,8 +319,6 @@ Endpoint analisis kemudian tersedia di:
 ```text
 https://property.ivanyuantama.my.id/api/analyze
 ```
-
-Membuka `https://property.ivanyuantama.my.id` tanpa path akan diarahkan ke endpoint `/health`.
 
 ### Deployment setelah ada perubahan
 
