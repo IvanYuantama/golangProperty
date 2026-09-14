@@ -5,7 +5,7 @@ Backend Go : menganalisis beberapa layer PostGIS berdasarkan latitude dan longit
 ## Alur request
 
 1. Route menerima request HTTP.
-2. Middleware memasang timeout, rate limit, API key, recovery, dan security headers.
+2. Middleware memasang timeout, API key, recovery, dan security headers.
 3. Controller memvalidasi `lat` dan `lng`.
 4. Service memeriksa Redis menggunakan koordinat sebagai cache key.
 5. Jika cache tidak tersedia, dialihkan ke PostgreSQL.
@@ -53,9 +53,6 @@ DATABASE_URL=postgresql://username:password@hostname:5432/database_name?sslmode=
 REDIS_URL=redis://redis:6379/0
 API_KEY=ganti-dengan-random-string-minimal-32-karakter
 GIN_MODE=release
-ENABLE_HSTS=false
-TRUSTED_PROXIES=
-RATE_LIMIT_PER_MINUTE=60
 REQUEST_TIMEOUT=5s
 ANALYZE_CACHE_TTL=10m
 ANALYZE_CACHE_VERSION=v1
@@ -113,7 +110,7 @@ Redis tidak mempublikasikan port `6379` ke internet dan digunakan sebagai cache 
 3. Tambahkan constructor controller tersebut di `main.go`.
 4. Tambahkan controller ke struct `routes.Controllers`, lalu daftarkan endpoint di `routes/routes.go`.
 
-Semua endpoint di dalam grup `/api` otomatis memakai API key dan rate limit yang dipasang di `main.go`.
+Semua endpoint di dalam grup `/api` otomatis memakai API key yang dipasang di `main.go`.
 
 ## Dokumentasi Postman
 
@@ -123,7 +120,7 @@ Import file berikut ke Postman:
 - `docs/postman/development.postman_environment.json`
 - `docs/postman/production.postman_environment.json`
 
-Isi variable `api_key` langsung melalui Postman dan jangan menyimpan API key asli ke repository. Collection berisi endpoint health, readiness, analyze, parameter koordinat, serta contoh respons status `200`, `400`, `401`, `404`, `429`, `500`, dan `503`.
+Isi variable `api_key` langsung melalui Postman dan jangan menyimpan API key asli ke repository. Collection berisi endpoint health, readiness, analyze, parameter koordinat, serta contoh respons status `200`, `400`, `401`, `404`, `500`, dan `503`.
 
 ## Mengubah pencarian layer
 
@@ -162,7 +159,7 @@ Penambahan layer tidak memerlukan perubahan pada controller atau route `/api/ana
 4. Tambahkan warna dan label di `services/analyze_style.go` jika layer mempunyai style khusus.
 5. Jalankan pemeriksaan format, `go vet`, dan `go build ./...` sebelum deployment.
 
-`config/config.go` hanya menyimpan konfigurasi runtime seperti database, Redis, API key, proxy, dan rate limit. Detail tabel serta style tetap berada dekat dengan fitur analyze.
+`config/config.go` hanya menyimpan konfigurasi runtime seperti database, Redis, API key, timeout, dan cache. Detail tabel serta style tetap berada dekat dengan fitur analyze.
 
 Kolom internal `style_value` dipakai service untuk menentukan `label` dan `color`, tetapi tidak dikirim ke pengguna. Bentuk setiap hasil adalah:
 
@@ -188,10 +185,7 @@ Kolom internal `style_value` dipakai service untuk menentukan `label` dan `color
 - API key dibandingkan secara constant-time untuk mengurangi risiko timing attack.
 - Credential database, Redis, dan API key dibaca dari environment dan tidak di-hardcode dalam source code.
 - Request API memiliki timeout agar query yang terlalu lama dapat dibatalkan.
-- Rate limiter per IP membatasi jumlah request yang diterima setiap menit.
 - Security headers mencegah MIME sniffing, framing, pengiriman referrer, dan penyimpanan respons pada cache client.
-- HSTS dapat diaktifkan melalui environment setelah backend menggunakan HTTPS.
-- Trusted proxy dikonfigurasi agar alamat IP client tidak dipercaya dari proxy sembarangan.
 - Panic recovery mencegah satu request bermasalah mematikan seluruh server.
 - Pesan error untuk client dibuat umum sedangkan detail kesalahan hanya dicatat pada log server.
 - Container API berjalan sebagai user non-root dengan filesystem read-only dan `no-new-privileges`.
@@ -200,7 +194,6 @@ Kolom internal `style_value` dipakai service untuk menentukan `label` dan `color
 ### Dapat dikembangkan berikutnya
 
 - Tambahkan login dan authentication agar setiap request dapat dihubungkan dengan user tertentu.
-- Tambahkan rate limiter per user setelah authentication tersedia tanpa menghapus perlindungan per IP.
 - Tambahkan role-based access control jika setiap user mempunyai hak akses endpoint yang berbeda.
 - Gunakan secret manager atau Docker Secrets untuk melindungi credential production dengan lebih baik.
 - Tambahkan request ID, audit log, monitoring, dan alert agar aktivitas mencurigakan lebih mudah ditelusuri.
@@ -283,7 +276,7 @@ nano .env
 chmod 600 .env
 ```
 
-Isi `DATABASE_URL`, `API_KEY`, port, dan konfigurasi production lainnya. Gunakan `APP_PORT=3100`, `ENABLE_HSTS=false`, dan biarkan `TRUSTED_PROXIES` kosong selama aplikasi tidak berada di belakang reverse proxy. Jangan menyalin `.env` ke dalam image Docker atau commit file tersebut ke repository.
+Isi `DATABASE_URL`, `API_KEY`, port, dan konfigurasi production lainnya. Gunakan `APP_PORT=3100`. Jangan menyalin `.env` ke dalam image Docker atau commit file tersebut ke repository.
 
 6. Jika repository Docker Hub bersifat private, login ke Docker Hub dari VPS:
 

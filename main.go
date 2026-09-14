@@ -70,23 +70,16 @@ func main() {
 
 	router := gin.New()
 	router.HandleMethodNotAllowed = true
-	// Urutan middleware dibuat eksplisit agar log, pemulihan panic, dan header
-	// keamanan berlaku untuk seluruh endpoint.
+	// Urutan middleware dibuat eksplisit agar log, pemulihan panic, dan header keamanan berlaku untuk seluruh endpoint.
 	router.Use(
 		appmiddleware.RequestLogger(),
 		appmiddleware.Recovery(),
-		appmiddleware.SecurityHeaders(appConfig.EnableHSTS),
+		appmiddleware.SecurityHeaders(),
 	)
 
-	if err := router.SetTrustedProxies(appConfig.TrustedProxies); err != nil {
-		log.Fatalf("konfigurasi TRUSTED_PROXIES tidak valid: %v", err)
-	}
-
-	rateLimiter := appmiddleware.NewIPRateLimiter(appConfig.RateLimitPerMinute, time.Minute)
 	api := router.Group("/api")
 	api.Use(
 		appmiddleware.RequestTimeout(appConfig.RequestTimeout),
-		rateLimiter.Middleware(),
 		appmiddleware.APIKey(appConfig.APIKey),
 	)
 	routes.Register(router, api, routes.Controllers{

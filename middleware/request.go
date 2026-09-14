@@ -36,7 +36,7 @@ func RequestLogger() gin.HandlerFunc {
 			c.Request.URL.Path,
 			c.Writer.Status(),
 			time.Since(start).Round(time.Microsecond),
-			c.ClientIP(),
+			c.Request.RemoteAddr,
 		)
 	}
 }

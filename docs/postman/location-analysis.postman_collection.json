@@ -109,17 +109,6 @@
               "body": "{\n  \"error\": \"API key tidak valid atau tidak dikirim\"\n}"
             },
             {
-              "name": "429 - Rate limit",
-              "status": "Too Many Requests",
-              "code": 429,
-              "header": [
-                { "key": "Content-Type", "value": "application/json" },
-                { "key": "Retry-After", "value": "30" }
-              ],
-              "cookie": [],
-              "body": "{\n  \"error\": \"batas permintaan terlampaui; silakan coba lagi nanti\"\n}"
-            },
-            {
               "name": "500 - Kesalahan internal",
               "status": "Internal Server Error",
               "code": 500,
