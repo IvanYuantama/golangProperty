@@ -1,6 +1,6 @@
 # Location Analysis API
 
-Backend Go untuk menganalisis beberapa layer PostGIS berdasarkan latitude dan longitude.
+Backend Go : menganalisis beberapa layer PostGIS berdasarkan latitude dan longitude.
 
 ## Alur request
 
@@ -8,7 +8,7 @@ Backend Go untuk menganalisis beberapa layer PostGIS berdasarkan latitude dan lo
 2. Middleware memasang timeout, rate limit, API key, recovery, dan security headers.
 3. Controller memvalidasi `lat` dan `lng`.
 4. Service memeriksa Redis menggunakan koordinat sebagai cache key.
-5. Jika cache tidak tersedia, satu query gabungan dijalankan ke PostgreSQL.
+5. Jika cache tidak tersedia, dialihkan ke PostgreSQL.
 6. Hasil database diberi label dan warna oleh backend, lalu disimpan ke Redis.
 7. Controller mengembalikan JSON kepada client.
 
@@ -208,9 +208,7 @@ Kolom internal `style_value` dipakai service untuk menentukan `label` dan `color
 - Tambahkan automated test, vulnerability scanning, dan dependency scanning sebelum deployment production.
 - Gunakan user PostgreSQL khusus dengan hak akses minimum sesuai tabel yang dibutuhkan backend.
 
-## CI/CD
-
-Workflow `.github/workflows/ci.yml` menjalankan CI berupa pemeriksaan format, `go vet`, build Go, dan build Docker pada setiap push serta pull request.
+## Deployment
 
 Deployment dilakukan secara manual dengan alur berikut:
 
