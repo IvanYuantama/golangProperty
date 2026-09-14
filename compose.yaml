@@ -32,7 +32,7 @@ services:
     env_file:
       - .env
     ports:
-      - "${APP_PORT}:${PORT}"
+      - "127.0.0.1:${APP_PORT}:${PORT}"
     healthcheck:
       test:
         [
