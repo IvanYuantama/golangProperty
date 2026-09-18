@@ -28,7 +28,7 @@ func Load() (App, error) {
 		AnalyzeCacheVersion: strings.TrimSpace(os.Getenv("ANALYZE_CACHE_VERSION")),
 	}
 	if app.Port == "" {
-		app.Port = "3000"
+		return App{}, fmt.Errorf("Port belom di set")
 	}
 
 	if app.DatabaseURL == "" {
